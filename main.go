@@ -24,9 +24,9 @@ const errorNothingDelete string = "[Error] There is nothing to delete"
 const errorInvalidPosition string = "[Error] Invalid position: %s"
 const errorMissingPositionArgument string = "[Error] Missing position argument"
 const errorMissingNoteArgument string = "[Error] Missing note argument"
-const errorPositionOutOfBoundaries string = "[Error] Position %d is out of the boundaries [1, %d]"
+const errorPositionOutOfBoundaries string = "[Error] Position %d is out of the boundary [1, %d]"
 const infoNotePadEmpty string = "[Info] Notepad is empty"
-const infoSuccessDelete string = "[OK] The note at position %d was successfully updated\n"
+const infoSuccessDelete string = "[OK] The note at position %d was successfully deleted\n"
 const infoSuccessUpdate string = "[OK] The note at position %d was successfully updated\n"
 
 var quit bool = false
