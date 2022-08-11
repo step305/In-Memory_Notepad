@@ -5,10 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 )
 
-const numCommands int = 4
+const numCommands int = 6
 const listPattern string = "[Info] %d: %s\n"
 const commandPromptRequest string = "Enter a command and data: > "
 const maxSizeRequest string = "Enter the maximum number of notes: > "
@@ -18,7 +19,15 @@ const errorNotePadFull string = "[Error] Notepad is full"
 const errorUnknownCommand string = "[Error] Unknown command"
 const errorEmptyNote string = "[Error] Missing note argument"
 const errorInvalidInput string = "[Error] Invalid input while getting max notepad size"
+const errorNothingUpdate string = "[Error] There is nothing to update"
+const errorNothingDelete string = "[Error] There is nothing to delete"
+const errorInvalidPosition string = "[Error] Invalid position: %s"
+const errorMissingPositionArgument string = "[Error] Missing position argument"
+const errorMissingNoteArgument string = "[Error] Missing note argument"
+const errorPositionOutOfBoundaries string = "[Error] Position %d is out of the boundaries [1, %d]"
 const infoNotePadEmpty string = "[Info] Notepad is empty"
+const infoSuccessDelete string = "[OK] The note at position %d was successfully updated\n"
+const infoSuccessUpdate string = "[OK] The note at position %d was successfully updated\n"
 
 var quit bool = false
 var maxNotePadSize int = 5
@@ -30,22 +39,40 @@ var knownCommands = [numCommands]string{
 	"create",
 	"list",
 	"clear",
+	"update",
+	"delete",
 }
 
 // Command confirmation phrases
-var commandConfirmation = [4]string{
+var commandConfirmation = [numCommands]string{
 	"[Info] Bye!\n",
 	"[OK] The note was successfully created\n",
 	"",
 	"[OK] All notes were successfully deleted\n",
+	infoSuccessUpdate,
+	infoSuccessDelete,
 }
 
+var deleteConfirmationIndex = Where("delete")
+var updateConfirmationIndex = Where("update")
+
 // Commands corresponding actions
-var actions = [4]func(str ...string) error{
+var actions = [numCommands]func(str ...string) error{
 	actionOnExit,
 	actionOnCreate,
 	actionOnList,
 	actionOnClear,
+	actionOnUpdate,
+	actionOnDelete,
+}
+
+func Where(s string) int {
+	for i := range knownCommands {
+		if knownCommands[i] == s {
+			return i
+		}
+	}
+	return -1
 }
 
 // action on command "exit", fakeArgs are unnecessary
@@ -88,6 +115,76 @@ func actionOnList(fakeArgs ...string) error {
 		if len(note) > 0 {
 			fmt.Printf(listPattern, i+1, note)
 		}
+	}
+	return nil
+}
+
+func getPosition(s string) (int, error) {
+	position, err := strconv.Atoi(s)
+
+	if err != nil {
+		return 0, errors.New(fmt.Sprintf(errorInvalidPosition, s))
+	}
+
+	if position < 1 || position > maxNotePadSize {
+		return 0, errors.New(fmt.Sprintf(errorPositionOutOfBoundaries, position, maxNotePadSize))
+	}
+
+	return position, nil
+}
+
+// action on command "update
+func actionOnUpdate(data ...string) error {
+	if len(data) > 0 {
+		if len(data[0]) == 0 {
+			return errors.New(errorMissingPositionArgument)
+		}
+		input := strings.Split(data[0], " ")
+		if len(input) == 1 {
+			return errors.New(errorMissingNoteArgument)
+		}
+		position, err := getPosition(input[0])
+		if err != nil {
+			return err
+		}
+
+		if position > len(notePad) {
+			return errors.New(errorNothingUpdate)
+		}
+
+		newData := strings.Join(input[1:], " ")
+		notePad[position-1] = newData
+		commandConfirmation[updateConfirmationIndex] = fmt.Sprintf(infoSuccessUpdate, position)
+	}
+	return nil
+}
+
+func deleteNote(position int) {
+	notePadNew := make([]string, len(notePad)-1, maxNotePadSize)
+	notePadNew = append(notePad[:position], notePad[position+1:]...)
+	notePad = notePadNew
+}
+
+// action on command "delete"
+func actionOnDelete(data ...string) error {
+	if len(data) > 0 {
+		if len(data[0]) == 0 {
+			return errors.New(errorMissingPositionArgument)
+		}
+
+		input := strings.Split(data[0], " ")
+
+		position, err := getPosition(input[0])
+		if err != nil {
+			return err
+		}
+
+		if position > len(notePad) {
+			return errors.New(errorNothingDelete)
+		}
+
+		deleteNote(position - 1)
+		commandConfirmation[deleteConfirmationIndex] = fmt.Sprintf(infoSuccessDelete, position)
 	}
 	return nil
 }
